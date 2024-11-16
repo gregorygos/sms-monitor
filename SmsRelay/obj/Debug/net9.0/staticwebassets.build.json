@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "lftTSYbDW2dtcPkfmhveU8jpo6w2nYaGJErTkynsaok=",
+  "Source": "SmsRelay",
+  "BasePath": "_content/SmsRelay",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

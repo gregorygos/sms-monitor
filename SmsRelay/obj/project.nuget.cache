@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "TIRW9x4JRtE=",
+  "success": true,
+  "projectFilePath": "/Users/gregorygould/Projects/tapmango/SmsRelay/SmsRelay.csproj",
+  "expectedPackageFiles": [
+    "/Users/gregorygould/.nuget/packages/microsoft.aspnetcore.openapi/9.0.0/microsoft.aspnetcore.openapi.9.0.0.nupkg.sha512",
+    "/Users/gregorygould/.nuget/packages/microsoft.openapi/1.6.17/microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}
