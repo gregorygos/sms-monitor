@@ -62,5 +62,5 @@ Usecases include: Exclusive Offers, Loyalty Rewards and Birthday Specials. Feedb
 > `dotnet test SmsRelaySolution.sln`
 
 ## Docker
-> `# docker build -t sms-relay .`
+> `docker build -t sms-relay .`
 > `docker run -d -p 4000:4000 sms-relay`

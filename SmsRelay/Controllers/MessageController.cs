@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
-using SmsRelay.Services;
+    using Microsoft.AspNetCore.Mvc;
+    using SmsRelay.Services;
 
-namespace SmsRelay.Controllers
-{
+    namespace SmsRelay.Controllers
+    {
     [ApiController]
     [Route("[controller]")]
     public class MessageController : ControllerBase
@@ -24,4 +24,4 @@ namespace SmsRelay.Controllers
             );
         }
     }
-}
+    }
