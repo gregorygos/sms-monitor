@@ -31,3 +31,4 @@
 /Users/gregorygould/Projects/tapmango/SmsRelay/obj/Debug/net9.0/SmsRelay.pdb
 /Users/gregorygould/Projects/tapmango/SmsRelay/obj/Debug/net9.0/SmsRelay.genruntimeconfig.cache
 /Users/gregorygould/Projects/tapmango/SmsRelay/obj/Debug/net9.0/ref/SmsRelay.dll
+/Users/gregorygould/Projects/tapmango/SmsRelay/obj/Debug/net9.0/SmsRelay.sourcelink.json

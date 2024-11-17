@@ -7,73 +7,50 @@ namespace SmsRelay.Tests.Services
     public class SmsRelayTests
     {
         private readonly MessageRateLimiter _service;
-        private readonly int _maxAllowablePerNum;
-        private readonly int _maxTotal;
-        // I would  never do this in production!
-        private const string numberOfAGuyWhoWantsThisJob = "4032467481";
+        private const string NumberOfAGuyWhoWantsThisJob = "4032467481";
+        private const string AccountId = "Account1";
 
         public SmsRelayTests()
         {
             _service = new MessageRateLimiter();
-            _maxAllowablePerNum = MessageRateLimiter.MAX_MSG_PER_NUMBER_PER_SEC;
-            _maxTotal = MessageRateLimiter.MAX_MSG_TOTAL_PER_SEC;
         }
         
         [Fact]
-        public void CanSendMessageUnderLimit()
-        {
-            var result = _service.CanSendMessage(numberOfAGuyWhoWantsThisJob);
+        public void CanSendMessageUnderLimit() {
+            var result = _service.CanSendMessage(NumberOfAGuyWhoWantsThisJob, AccountId);
             Assert.True(result);
         }
 
         [Fact]
         public void CanNotSendMessageOverLimit()
         {
-            for (int i = 0; i < _maxAllowablePerNum; i++)
-            {
-                _service.CanSendMessage(numberOfAGuyWhoWantsThisJob);
+            for (int i = 0; i < MessageRateLimiter.MAX_MSG_PER_NUMBER_PER_SEC; i++) {
+                _service.CanSendMessage(NumberOfAGuyWhoWantsThisJob, AccountId);
             }
 
-            var result = _service.CanSendMessage(numberOfAGuyWhoWantsThisJob);
+            var result = _service.CanSendMessage(NumberOfAGuyWhoWantsThisJob, AccountId);
             Assert.False(result);
         }
 
         [Fact]
-        public void CanNotSendMessageOverAccountLimit()
-        {
-            for (int i = 0; i < _maxTotal; i++)
-            {
-                // Unique phone numbers should fill the maxTotal.
-                _service.CanSendMessage($"40{i}2467481");
+        public void CanNotSendMessageOverAccountLimit() {
+            for (int i = 0; i < MessageRateLimiter.MAX_MSG_TOTAL_PER_SEC; i++) {
+                _service.CanSendMessage($"40{i}2467481", AccountId);
             }
 
-            var result = _service.CanSendMessage("4039876543");
+            var result = _service.CanSendMessage("4039876543", AccountId);
             Assert.False(result);
         }
 
         [Fact]
-        public async Task CanSendMessageAfterDelay()
-        {
-            _service.CanSendMessage(numberOfAGuyWhoWantsThisJob);
+        public async Task CanSendMessageAfterDelay() {
+            _service.CanSendMessage(NumberOfAGuyWhoWantsThisJob, AccountId);
 
-            // await to avoid blocking thread
+            // Await to avoid blocking thread
             await Task.Delay(1005);
 
-            var result = _service.CanSendMessage(numberOfAGuyWhoWantsThisJob);
+            var result = _service.CanSendMessage(NumberOfAGuyWhoWantsThisJob, AccountId);
             Assert.True(result);
         }
-
-        [Fact]
-        public async Task PhoneNumberRemovedAfterCountDecrements()
-        {
-            _service.CanSendMessage("4032467489");
-
-            await Task.Delay(1000);
-
-            // Check if the phone number has been removed from the dictionary
-            var removed = !_service.PhoneNumberExists("40324674819");
-            Assert.True(removed);
-        }
-        
     }
 }

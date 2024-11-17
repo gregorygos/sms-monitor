@@ -107,3 +107,4 @@
 /Users/gregorygould/Projects/tapmango/SmsRelay.Tests/obj/Debug/net9.0/SmsRelay.Tests.pdb
 /Users/gregorygould/Projects/tapmango/SmsRelay.Tests/obj/Debug/net9.0/SmsRelay.Tests.genruntimeconfig.cache
 /Users/gregorygould/Projects/tapmango/SmsRelay.Tests/obj/Debug/net9.0/ref/SmsRelay.Tests.dll
+/Users/gregorygould/Projects/tapmango/SmsRelay.Tests/obj/Debug/net9.0/SmsRelay.Tests.sourcelink.json

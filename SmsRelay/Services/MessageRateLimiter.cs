@@ -1,77 +1,110 @@
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SmsRelay.Services
 {
-    public class MessageRateLimiter
+    public class MessageInfo
     {
-        // Threadsafe dictionary -- could use something like Redis which is faster in the future.
-        // May not stand up to very high loads, would suggest Distributed Cache with REdis
-        private static readonly ConcurrentDictionary<string, int> _phoneMsgCounts = new ConcurrentDictionary<string, int>(); 
-        private static int _totalMsgCount = 0;
-        public static readonly int MAX_MSG_PER_NUMBER_PER_SEC = 1;
-        public static readonly int MAX_MSG_TOTAL_PER_SEC = 5;
-
-        public bool CanSendMessage(string phoneNum) {
-            // TODO: Validate phone number is legit
-            _phoneMsgCounts.TryGetValue(phoneNum, out int phoneCount);
-
-            if (phoneCount >= MAX_MSG_PER_NUMBER_PER_SEC) {
-                Console.WriteLine($"[{phoneNum}][Limit Exceeded] Phone Number Limit: {phoneCount}");
-                return false;
-            }
-
-            if (_totalMsgCount >= MAX_MSG_TOTAL_PER_SEC) {
-                Console.WriteLine($"[Limit Exceeded] Total Limit: {_totalMsgCount}");
-                return false;
-            }
-
-            _phoneMsgCounts[phoneNum] = phoneCount + 1;
-            _totalMsgCount++; 
-
-            Console.WriteLine($"[Message Sent] {phoneNum}: PhoneCount = {phoneCount + 1}, TotalCount = {_totalMsgCount}");
-
-            // Non-blocking - this should go to the threadpool until it decrements it's own value.
-            Task.Delay(1000).ContinueWith(_ => {
-                // Realtime decrement the counts - do specify time period above
-                _phoneMsgCounts.AddOrUpdate(phoneNum, 0, (key, count) => count - 1);
-                _totalMsgCount--;
-
-                // Remove phone number from dictionary if count is 0
-                // I would rather use a cache that has a LRU expiry
-                _phoneMsgCounts.TryGetValue(phoneNum, out int updatedCount);
-                if (updatedCount <= 0) {
-                    _phoneMsgCounts.TryRemove(phoneNum, out int _);
-                }
-            });
-
-            return true;
-
-        }
-
-          // Method to check if the phone number exists in the dictionary -- mostly for testing
-        public bool PhoneNumberExists(string phoneNum) {
-            return _phoneMsgCounts.ContainsKey(phoneNum);
-        }
-
-        // Commented code should not be in production, but I did want some sort of Deadlock reporting.
-        // public bool CanSendMessageWithRetry(string phoneNum, int maxRetries = 3) {
-        //     int attempts = 0;
-
-        //     while (attempts < maxRetries) {
-        //         try {
-        //             return CanSendMessage(phoneNum);
-        //         } catch (Exception ex) {
-        //             attempts++;
-        //             Console.WriteLine($"[{phoneNum}][Retry] Attempt {attempts} failed: {ex.Message}");
-        //             if (attempts >= maxRetries) {
-        //                 Console.WriteLine($"[CRITICAL] All retries failed for {phoneNum}");
-        //                 return false;
-        //             }
-        //         }
-        //     }
-        //     return false;
-        // }
+        public string? PhoneNumber { get; set; }
+        public string? AccountId { get; set; }
+        public List<DateTime> MessageTimestamps { get; set; } = new List<DateTime>();
     }
 
-    
+    public class MessageRateLimiter
+    {
+        public const int MAX_MSG_PER_NUMBER_PER_SEC = 5;
+        public const int MAX_MSG_TOTAL_PER_SEC = 20;
+
+        private readonly ConcurrentDictionary<string, MessageInfo> _messageDataByNumber = new ConcurrentDictionary<string, MessageInfo>();
+        private readonly ConcurrentDictionary<string, MessageInfo> _messageDataByAccount = new ConcurrentDictionary<string, MessageInfo>();
+
+        public bool CanSendMessage(string phoneNumber, string accountId)
+        {
+            var now = DateTime.UtcNow;
+            bool canSendByNumber = CanSendByPhoneNumber(phoneNumber, now);
+            bool canSendByAccount = CanSendByAccount(accountId, now);
+
+            return canSendByNumber && canSendByAccount;
+        }
+
+        private bool CanSendByPhoneNumber(string phoneNumber, DateTime now)
+        {
+            var messageInfo = _messageDataByNumber.GetOrAdd(phoneNumber, new MessageInfo { PhoneNumber = phoneNumber });
+
+            lock (messageInfo.MessageTimestamps)
+            {
+                CleanOldMessages(messageInfo, now);
+                if (messageInfo.MessageTimestamps.Count >= MAX_MSG_PER_NUMBER_PER_SEC) {
+                    return false;
+                }
+                messageInfo.MessageTimestamps.Add(now);
+            }
+
+            return true;
+        }
+
+        private bool CanSendByAccount(string accountId, DateTime now)
+        {
+            var messageInfo = _messageDataByAccount.GetOrAdd(accountId, new MessageInfo { AccountId = accountId });
+
+            lock (messageInfo.MessageTimestamps)
+            {
+                CleanOldMessages(messageInfo, now);
+                if (messageInfo.MessageTimestamps.Count >= MAX_MSG_TOTAL_PER_SEC)
+                {
+                    return false;
+                }
+                messageInfo.MessageTimestamps.Add(now);
+            }
+
+            return true;
+        }
+
+        private void CleanOldMessages(MessageInfo messageInfo, DateTime now)
+        {
+            messageInfo.MessageTimestamps.RemoveAll(timestamp => (now - timestamp).TotalSeconds > 1);
+        }
+
+        // Testing method
+        public bool PhoneNumberExists(string phoneNumber)
+        {
+            return _messageDataByNumber.ContainsKey(phoneNumber);
+        }
+
+        public IEnumerable<MessageInfo> GetAllMessages()
+        {
+            return _messageDataByNumber.Values.Concat(_messageDataByAccount.Values);
+        }
+
+        public double GetMessagesPerSecond()
+        {
+            var now = DateTime.UtcNow;
+            var oneSecondAgo = now.AddSeconds(-1);
+
+            var messageCount = _messageDataByNumber.Values
+                .Concat(_messageDataByAccount.Values)
+                .SelectMany(info => info.MessageTimestamps)
+                .Count(timestamp => timestamp > oneSecondAgo);
+
+            return messageCount;
+        }
+
+        public IEnumerable<MessageInfo> GetFilteredMessages(string phoneNumber, DateTime? startDate, DateTime? endDate)
+        {
+            return _messageDataByNumber.Values
+                .Where(info => (string.IsNullOrEmpty(phoneNumber) || info.PhoneNumber == phoneNumber) &&
+                               (!startDate.HasValue || info.MessageTimestamps.Any(t => t >= startDate)) &&
+                               (!endDate.HasValue || info.MessageTimestamps.Any(t => t <= endDate)));
+        }
+
+        public IEnumerable<MessageInfo> GetMessagesByAccount(string accountId, DateTime? startDate, DateTime? endDate)
+        {
+            return _messageDataByAccount.Values
+                .Where(info => (string.IsNullOrEmpty(accountId) || info.AccountId == accountId) &&
+                               (!startDate.HasValue || info.MessageTimestamps.Any(t => t >= startDate)) &&
+                               (!endDate.HasValue || info.MessageTimestamps.Any(t => t <= endDate)));
+        }
+    }
 }
