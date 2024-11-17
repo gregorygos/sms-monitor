@@ -26,7 +26,7 @@ Usecases include: Exclusive Offers, Loyalty Rewards and Birthday Specials. Feedb
   - Partition data into multiple `ConcurrentDictionaries` using relevant keys, such as:
     - **Country code**.
     - **Modulo of the phone number**, to evenly distribute load.
-  - For advanced caching and expiration strategies, offload to a third-party service such as **Redis**, leveraging techniques like **Least Recently Used (LRU)** to optimize resource usage and reduce bottlenecks. (This is what I would've done if I had more time)
+  - For advanced caching and expiration strategies, offload to a third-party service such as **Redis**, leveraging techniques like **Least Recently Used (LRU)** to optimize resource usage and reduce bottlenecks. (This is what I would've done if I had more time) and it would have massively simplified my approach.
 
 ### Message Batching
 - A common use-case is texting customers about a lunch offer just before lunch:
@@ -61,6 +61,10 @@ Usecases include: Exclusive Offers, Loyalty Rewards and Birthday Specials. Feedb
 ## Run Tests
 > `dotnet test SmsRelaySolution.sln`
 
-## Docker
+## Docker (backend)
 > `docker build -t sms-relay .`
 > `docker run -d -p 4000:4000 sms-relay`
+
+## Docker (backend)
+> `npm install`
+> `npm start`
